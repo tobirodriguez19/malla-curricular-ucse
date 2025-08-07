@@ -71,6 +71,7 @@ const ESTADOS = {
 
 // Almacenar el estado actual de cada materia
 let estadoMaterias = {};
+let notasMaterias = {}; // Nuevo: almacenar las notas
 
 // Variables para Firebase
 let firebaseUser = null;
@@ -87,15 +88,32 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         if (window.firebaseAuth) {
             initializeFirebase();
+            // Mostrar modal de login automáticamente si no hay usuario
+            checkAutoLogin();
         }
     }, 1000);
 });
+
+function checkAutoLogin() {
+    // Verificar si hay un usuario ya autenticado
+    window.onAuthStateChanged(window.firebaseAuth, (user) => {
+        if (!user) {
+            // No hay usuario autenticado, mostrar modal automáticamente
+            setTimeout(() => {
+                if (!firebaseUser) {
+                    document.getElementById('loginModal').style.display = 'flex';
+                }
+            }, 500);
+        }
+    });
+}
 
 function inicializarMaterias() {
     // Inicializar todas las materias como no cursadas
     for (let año in materias) {
         materias[año].forEach(materia => {
             estadoMaterias[materia.codigo] = ESTADOS.NO_CURSADA;
+            notasMaterias[materia.codigo] = ''; // Inicializar notas vacías
         });
     }
 }
@@ -123,6 +141,17 @@ function crearElementoMateria(materia) {
             <div class="subject-name">${materia.nombre}</div>
         </div>
         <div class="subject-status">${getStatusText(ESTADOS.NO_CURSADA)}</div>
+        <div class="nota-container">
+            <input type="number" 
+                   class="nota-input" 
+                   placeholder="Nota" 
+                   min="1" 
+                   max="10" 
+                   step="0.1"
+                   value="${notasMaterias[materia.codigo] || ''}"
+                   onchange="actualizarNota('${materia.codigo}', this.value)"
+                   onclick="event.stopPropagation()">
+        </div>
         <div class="correlativas">
             ${materia.correlativasFuertes.length > 0 ? 
                 `<div><span class="correlativas-label">F:</span>${materia.correlativasFuertes.map(c => 
@@ -138,6 +167,16 @@ function crearElementoMateria(materia) {
     div.addEventListener('click', () => cambiarEstadoMateria(materia.codigo));
     
     return div;
+}
+
+function actualizarNota(codigo, nota) {
+    notasMaterias[codigo] = nota;
+    console.log(`Nota actualizada: Materia ${codigo} = ${nota}`);
+    
+    // Sincronizar con Firebase si está habilitado
+    if (isSyncEnabled && firebaseUser) {
+        syncToFirebase();
+    }
 }
 
 function cambiarEstadoMateria(codigo) {
@@ -491,22 +530,30 @@ function getStatusText(estado) {
 
 // Funciones de control
 function resetAll() {
-    if (confirm('¿Estás seguro de que quieres reiniciar todo el progreso?')) {
+    if (confirm('¿Estás seguro de que quieres reiniciar todo el progreso (incluyendo notas)?')) {
         inicializarMaterias();
+        renderizarMaterias(); // Re-renderizar para limpiar notas
         actualizarEstados();
     }
 }
 
 function saveProgress() {
-    localStorage.setItem('mallaInteractivaUCSE', JSON.stringify(estadoMaterias));
+    const progreso = {
+        estados: estadoMaterias,
+        notas: notasMaterias
+    };
+    localStorage.setItem('mallaInteractivaUCSE', JSON.stringify(progreso));
     alert('Progreso guardado exitosamente!');
 }
 
 function loadProgress() {
     const progreso = localStorage.getItem('mallaInteractivaUCSE');
     if (progreso) {
-        estadoMaterias = JSON.parse(progreso);
+        const data = JSON.parse(progreso);
+        if (data.estados) estadoMaterias = data.estados;
+        if (data.notas) notasMaterias = data.notas;
         actualizarEstados();
+        renderizarMaterias(); // Re-renderizar para mostrar notas cargadas
         alert('Progreso cargado exitosamente!');
     } else {
         alert('No hay progreso guardado anteriormente.');
@@ -677,20 +724,24 @@ function updateUI(user) {
 function setupRealtimeSync() {
     if (!firebaseUser) return;
     
-    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}/materias`);
+    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}`);
     
     // Escuchar cambios en tiempo real
     window.firebaseOnValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data && !isInitialLoad) {
             // Datos recibidos de la nube
-            estadoMaterias = data;
+            if (data.materias) estadoMaterias = data.materias;
+            if (data.notas) notasMaterias = data.notas;
             actualizarEstados();
+            renderizarMaterias(); // Re-renderizar para actualizar notas
             showSyncNotification('📥 Progreso sincronizado desde la nube');
         } else if (data && isInitialLoad) {
             // Primera carga - usar datos de la nube si existen
-            estadoMaterias = data;
+            if (data.materias) estadoMaterias = data.materias;
+            if (data.notas) notasMaterias = data.notas;
             actualizarEstados();
+            renderizarMaterias(); // Re-renderizar para mostrar notas
             updateSyncStatus('✅ Conectado y sincronizado', 'connected');
         } else if (isInitialLoad) {
             // Primera vez - subir datos locales
@@ -703,9 +754,14 @@ function setupRealtimeSync() {
 function syncToFirebase() {
     if (!firebaseUser || !isSyncEnabled) return;
     
-    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}/materias`);
+    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}`);
     
-    window.firebaseSet(userRef, estadoMaterias)
+    const userData = {
+        materias: estadoMaterias,
+        notas: notasMaterias
+    };
+    
+    window.firebaseSet(userRef, userData)
         .then(() => {
             updateSyncStatus('✅ Conectado y sincronizado', 'connected');
             showSyncNotification('☁️ Progreso guardado en la nube');
