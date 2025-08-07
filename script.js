@@ -539,57 +539,138 @@ function initializeFirebase() {
     }
     
     console.log('🔥 Iniciando Firebase...');
-    updateSyncStatus('Conectando...', 'syncing');
     
     // Escuchar cambios de autenticación
     window.onAuthStateChanged(window.firebaseAuth, (user) => {
         if (user) {
             firebaseUser = user;
-            console.log('✅ Usuario autenticado:', user.uid);
+            console.log('✅ Usuario autenticado:', user.email || user.uid);
             console.log('🔄 Configurando sincronización en tiempo real...');
+            isSyncEnabled = true;
+            updateUI(user);
             setupRealtimeSync();
         } else {
             firebaseUser = null;
             console.log('❌ Usuario no autenticado');
-            updateSyncStatus('Desconectado', 'disconnected');
+            isSyncEnabled = false;
+            updateUI(null);
+            updateSyncStatus('No conectado', 'disconnected');
         }
     });
 }
 
 function toggleSync() {
-    const button = document.getElementById('syncButton');
+    // Mostrar modal de login
+    document.getElementById('loginModal').style.display = 'flex';
+}
+
+function closeLoginModal() {
+    document.getElementById('loginModal').style.display = 'none';
+}
+
+function loginUser() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
     
-    if (!window.firebaseAuth) {
-        updateSyncStatus('Firebase no disponible', 'disconnected');
-        console.error('Firebase no está cargado');
+    if (!email || !password) {
+        alert('Por favor ingresa email y contraseña');
         return;
     }
     
-    if (!isSyncEnabled) {
-        // Activar sincronización
-        updateSyncStatus('Conectando...', 'syncing');
-        console.log('🔄 Intentando conectar con Firebase...');
-        
-        window.signInAnonymously(window.firebaseAuth)
-            .then((result) => {
-                console.log('✅ Conexión exitosa:', result.user.uid);
-                isSyncEnabled = true;
-                button.textContent = '🔄 Desactivar Sincronización';
-                button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
-                updateSyncStatus('✅ Conectado exitosamente', 'connected');
-            })
-            .catch((error) => {
-                console.error('❌ Error completo:', error);
-                console.error('❌ Código de error:', error.code);
-                console.error('❌ Mensaje:', error.message);
-                updateSyncStatus(`Error: ${error.code}`, 'disconnected');
-            });
+    updateSyncStatus('Iniciando sesión...', 'syncing');
+    
+    window.signInWithEmailAndPassword(window.firebaseAuth, email, password)
+        .then((userCredential) => {
+            console.log('✅ Login exitoso:', userCredential.user.email);
+            closeLoginModal();
+            isSyncEnabled = true;
+            updateUI(userCredential.user);
+            updateSyncStatus('✅ Conectado como ' + userCredential.user.email, 'connected');
+        })
+        .catch((error) => {
+            console.error('❌ Error de login:', error);
+            let message = 'Error al iniciar sesión';
+            if (error.code === 'auth/user-not-found') {
+                message = 'Usuario no encontrado';
+            } else if (error.code === 'auth/wrong-password') {
+                message = 'Contraseña incorrecta';
+            } else if (error.code === 'auth/invalid-email') {
+                message = 'Email inválido';
+            }
+            updateSyncStatus(message, 'disconnected');
+            alert(message);
+        });
+}
+
+function registerUser() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    if (!email || !password) {
+        alert('Por favor ingresa email y contraseña');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+    
+    updateSyncStatus('Creando cuenta...', 'syncing');
+    
+    window.createUserWithEmailAndPassword(window.firebaseAuth, email, password)
+        .then((userCredential) => {
+            console.log('✅ Cuenta creada:', userCredential.user.email);
+            closeLoginModal();
+            isSyncEnabled = true;
+            updateUI(userCredential.user);
+            updateSyncStatus('✅ Cuenta creada y conectado como ' + userCredential.user.email, 'connected');
+        })
+        .catch((error) => {
+            console.error('❌ Error al crear cuenta:', error);
+            let message = 'Error al crear cuenta';
+            if (error.code === 'auth/email-already-in-use') {
+                message = 'El email ya está en uso';
+            } else if (error.code === 'auth/weak-password') {
+                message = 'Contraseña muy débil';
+            } else if (error.code === 'auth/invalid-email') {
+                message = 'Email inválido';
+            }
+            updateSyncStatus(message, 'disconnected');
+            alert(message);
+        });
+}
+
+function logout() {
+    window.signOut(window.firebaseAuth)
+        .then(() => {
+            console.log('✅ Sesión cerrada');
+            isSyncEnabled = false;
+            updateUI(null);
+            updateSyncStatus('Sesión cerrada', 'disconnected');
+        })
+        .catch((error) => {
+            console.error('❌ Error al cerrar sesión:', error);
+        });
+}
+
+function updateUI(user) {
+    const syncButton = document.getElementById('syncButton');
+    const logoutButton = document.getElementById('logoutButton');
+    const userInfo = document.getElementById('userInfo');
+    
+    if (user) {
+        // Usuario conectado
+        syncButton.style.display = 'none';
+        logoutButton.style.display = 'inline-block';
+        userInfo.style.display = 'block';
+        userInfo.textContent = `👤 Conectado como: ${user.email}`;
     } else {
-        // Desactivar sincronización
-        isSyncEnabled = false;
-        button.textContent = '🔄 Activar Sincronización';
-        button.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
-        updateSyncStatus('Sincronización desactivada', 'disconnected');
+        // Usuario desconectado
+        syncButton.style.display = 'inline-block';
+        syncButton.textContent = '� Iniciar Sesión';
+        logoutButton.style.display = 'none';
+        userInfo.style.display = 'none';
     }
 }
 
