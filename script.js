@@ -83,6 +83,9 @@ document.addEventListener('DOMContentLoaded', function() {
     renderizarMaterias();
     actualizarEstados();
     
+    // Mostrar modal de login inmediatamente
+    showLoginModal();
+    
     // Inicializar Firebase cuando esté disponible
     setTimeout(() => {
         if (window.firebaseAuth) {
@@ -90,6 +93,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 1000);
 });
+
+function showLoginModal() {
+    console.log('🔐 Mostrando modal de login');
+    
+    // Mostrar el modal inmediatamente
+    document.getElementById('loginModal').style.display = 'flex';
+    
+    // Verificar si hay un usuario ya autenticado cada 500ms
+    const checkAuthInterval = setInterval(() => {
+        if (window.firebaseAuth) {
+            window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                if (user) {
+                    // Usuario autenticado, cerrar modal
+                    console.log('✅ Usuario autenticado, cerrando modal');
+                    document.getElementById('loginModal').style.display = 'none';
+                    clearInterval(checkAuthInterval);
+                }
+            });
+        }
+    }, 500);
+}
 
 function inicializarMaterias() {
     // Inicializar todas las materias como no cursadas
@@ -569,7 +593,15 @@ function toggleSync() {
 }
 
 function closeLoginModal() {
-    document.getElementById('loginModal').style.display = 'none';
+    console.log('🚪 Intentando cerrar modal de login, firebaseUser:', !!firebaseUser);
+    // Solo cerrar el modal si hay un usuario autenticado
+    if (firebaseUser) {
+        document.getElementById('loginModal').style.display = 'none';
+        console.log('✅ Modal cerrado exitosamente');
+    } else {
+        console.log('❌ No se puede cerrar modal sin usuario autenticado');
+    }
+    // Si no hay usuario autenticado, no hacer nada (no cerrar el modal)
 }
 
 function loginUser() {
