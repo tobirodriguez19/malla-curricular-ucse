@@ -191,6 +191,16 @@ function crearElementoMateria(materia) {
         console.log('🖱️ Click detectado en div de materia:', materia.codigo, 'target:', event.target.className);
         // Solo cambiar estado si no se hizo click en el input de nota
         if (!event.target.classList.contains('nota-input')) {
+            const estadoActual = estadoMaterias[materia.codigo];
+            console.log('📋 Estado actual de materia', materia.codigo, ':', estadoActual);
+            
+            // Si está bloqueada, mostrar mensaje y no hacer nada
+            if (estadoActual === ESTADOS.BLOQUEADA) {
+                console.log('🚫 Materia bloqueada, no se puede cambiar estado');
+                mostrarMensajeMateriaBloqueda(materia);
+                return;
+            }
+            
             console.log('✅ Click válido en materia:', materia.codigo);
             cambiarEstadoMateria(materia.codigo);
         } else {
@@ -289,6 +299,50 @@ function cambiarEstadoMateria(codigo) {
     // Sincronizar con Firebase si está habilitado
     if (isSyncEnabled && firebaseUser) {
         syncToFirebase();
+    }
+}
+
+function mostrarMensajeMateriaBloqueda(materia) {
+    // Encontrar qué correlativas faltan para cursar
+    const correlativasFaltantes = [];
+    
+    // Verificar correlativas fuertes
+    for (let correlativa of materia.correlativasFuertes) {
+        const codigoCorrelativa = String(correlativa);
+        const estadoCorrelativa = estadoMaterias[codigoCorrelativa];
+        if (estadoCorrelativa !== ESTADOS.APROBADA && estadoCorrelativa !== ESTADOS.PROMOCIONADA) {
+            const materiaCorrelativa = encontrarMateriaPorCodigo(codigoCorrelativa);
+            correlativasFaltantes.push(`${codigoCorrelativa} ${materiaCorrelativa ? materiaCorrelativa.nombre : ''} (debe estar APROBADA para cursar)`);
+        }
+    }
+    
+    // Verificar correlativas débiles
+    for (let correlativa of materia.correlativasDebiles) {
+        const codigoCorrelativa = String(correlativa);
+        const estadoCorrelativa = estadoMaterias[codigoCorrelativa];
+        if (estadoCorrelativa !== ESTADOS.REGULAR && estadoCorrelativa !== ESTADOS.APROBADA && estadoCorrelativa !== ESTADOS.PROMOCIONADA) {
+            const materiaCorrelativa = encontrarMateriaPorCodigo(codigoCorrelativa);
+            correlativasFaltantes.push(`${codigoCorrelativa} ${materiaCorrelativa ? materiaCorrelativa.nombre : ''} (debe estar REGULAR o APROBADA para cursar)`);
+        }
+    }
+    
+    if (correlativasFaltantes.length > 0) {
+        const notification = document.createElement('div');
+        notification.className = 'bloqueo-notification';
+        notification.innerHTML = `
+            <strong>🔒 No puedes cursar ${materia.nombre}</strong><br>
+            <small>Faltan correlativas:</small><br>
+            ${correlativasFaltantes.map(c => `• ${c}`).join('<br>')}
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remover la notificación después de 4 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 4000);
     }
 }
 
