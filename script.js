@@ -84,28 +84,33 @@ document.addEventListener('DOMContentLoaded', function() {
     renderizarMaterias();
     actualizarEstados();
     
+    // Mostrar modal de login inmediatamente
+    showLoginModal();
+    
     // Inicializar Firebase cuando esté disponible
     setTimeout(() => {
         if (window.firebaseAuth) {
             initializeFirebase();
-            // Mostrar modal de login automáticamente si no hay usuario
-            checkAutoLogin();
         }
     }, 1000);
 });
 
-function checkAutoLogin() {
-    // Verificar si hay un usuario ya autenticado
-    window.onAuthStateChanged(window.firebaseAuth, (user) => {
-        if (!user) {
-            // No hay usuario autenticado, mostrar modal automáticamente
-            setTimeout(() => {
-                if (!firebaseUser) {
-                    document.getElementById('loginModal').style.display = 'flex';
+function showLoginModal() {
+    // Mostrar el modal inmediatamente
+    document.getElementById('loginModal').style.display = 'flex';
+    
+    // Verificar si hay un usuario ya autenticado cada 500ms
+    const checkAuthInterval = setInterval(() => {
+        if (window.firebaseAuth) {
+            window.onAuthStateChanged(window.firebaseAuth, (user) => {
+                if (user) {
+                    // Usuario autenticado, cerrar modal
+                    document.getElementById('loginModal').style.display = 'none';
+                    clearInterval(checkAuthInterval);
                 }
-            }, 500);
+            });
         }
-    });
+    }, 500);
 }
 
 function inicializarMaterias() {
@@ -612,7 +617,11 @@ function toggleSync() {
 }
 
 function closeLoginModal() {
-    document.getElementById('loginModal').style.display = 'none';
+    // Solo cerrar el modal si hay un usuario autenticado
+    if (firebaseUser) {
+        document.getElementById('loginModal').style.display = 'none';
+    }
+    // Si no hay usuario autenticado, no hacer nada (no cerrar el modal)
 }
 
 function loginUser() {
