@@ -71,7 +71,6 @@ const ESTADOS = {
 
 // Almacenar el estado actual de cada materia
 let estadoMaterias = {};
-let notasMaterias = {}; // Nuevo: almacenar las notas
 
 // Variables para Firebase
 let firebaseUser = null;
@@ -80,17 +79,9 @@ let isInitialLoad = true;
 
 // Inicializar la aplicación
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Iniciando aplicación...');
-    
-    // Inicializar con estados por defecto
     inicializarMaterias();
     renderizarMaterias();
     actualizarEstados();
-    
-    console.log('📚 Materias renderizadas con estados iniciales correctos');
-    
-    // Mostrar modal de login inmediatamente
-    showLoginModal();
     
     // Inicializar Firebase cuando esté disponible
     setTimeout(() => {
@@ -100,46 +91,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1000);
 });
 
-function showLoginModal() {
-    console.log('🔐 Mostrando modal de login');
-    
-    // Mostrar el modal inmediatamente
-    document.getElementById('loginModal').style.display = 'flex';
-    
-    // Verificar si hay un usuario ya autenticado cada 500ms
-    const checkAuthInterval = setInterval(() => {
-        if (window.firebaseAuth) {
-            window.onAuthStateChanged(window.firebaseAuth, (user) => {
-                if (user) {
-                    // Usuario autenticado, cerrar modal
-                    console.log('✅ Usuario autenticado, cerrando modal');
-                    document.getElementById('loginModal').style.display = 'none';
-                    clearInterval(checkAuthInterval);
-                }
-            });
-        }
-    }, 500);
-}
-
 function inicializarMaterias() {
-    console.log('🏁 Inicializando estados de materias...');
     // Inicializar todas las materias como no cursadas
     for (let año in materias) {
         materias[año].forEach(materia => {
             estadoMaterias[materia.codigo] = ESTADOS.NO_CURSADA;
-            notasMaterias[materia.codigo] = ''; // Inicializar notas vacías
         });
     }
-    
-    // Verificar cuáles materias pueden cursarse desde el inicio
-    verificarMateriasBloquedas();
-    console.log('✅ Estados iniciales configurados');
 }
 
 function renderizarMaterias() {
-    console.log('🎨 Renderizando materias...');
-    let totalMaterias = 0;
-    
     for (let año in materias) {
         const container = document.getElementById(`year-${año}`);
         container.innerHTML = '';
@@ -147,11 +108,8 @@ function renderizarMaterias() {
         materias[año].forEach(materia => {
             const materiaElement = crearElementoMateria(materia);
             container.appendChild(materiaElement);
-            totalMaterias++;
         });
     }
-    
-    console.log(`✅ ${totalMaterias} materias renderizadas con eventos click`);
 }
 
 function crearElementoMateria(materia) {
@@ -165,17 +123,6 @@ function crearElementoMateria(materia) {
             <div class="subject-name">${materia.nombre}</div>
         </div>
         <div class="subject-status">${getStatusText(ESTADOS.NO_CURSADA)}</div>
-        <div class="nota-container">
-            <input type="number" 
-                   class="nota-input" 
-                   placeholder="Nota" 
-                   min="1" 
-                   max="10" 
-                   step="0.1"
-                   value="${notasMaterias[materia.codigo] || ''}"
-                   onchange="actualizarNota('${materia.codigo}', this.value)"
-                   onclick="event.stopPropagation()">
-        </div>
         <div class="correlativas">
             ${materia.correlativasFuertes.length > 0 ? 
                 `<div><span class="correlativas-label">F:</span>${materia.correlativasFuertes.map(c => 
@@ -188,50 +135,16 @@ function crearElementoMateria(materia) {
         </div>
     `;
     
-    div.addEventListener('click', (event) => {
-        // Solo cambiar estado si no se hizo click en el input de nota
-        if (!event.target.classList.contains('nota-input')) {
-            const estadoActual = estadoMaterias[materia.codigo];
-            
-            // Si está bloqueada, mostrar mensaje y no hacer nada
-            if (estadoActual === ESTADOS.BLOQUEADA) {
-                console.log(`🚫 Materia ${materia.codigo} bloqueada`);
-                mostrarMensajeMateriaBloqueda(materia);
-                return;
-            }
-            
-            console.log(`✅ Cambiando estado de materia ${materia.codigo}`);
-            cambiarEstadoMateria(materia.codigo);
-        }
-    });
+    div.addEventListener('click', () => cambiarEstadoMateria(materia.codigo));
     
     return div;
 }
 
-function actualizarNota(codigo, nota) {
-    notasMaterias[codigo] = nota;
-    console.log(`Nota actualizada: Materia ${codigo} = ${nota}`);
-    
-    // Sincronizar con Firebase si está habilitado
-    if (isSyncEnabled && firebaseUser) {
-        syncToFirebase();
-    }
-}
-
 function cambiarEstadoMateria(codigo) {
-    console.log('🔄 cambiarEstadoMateria llamada para:', codigo);
-    console.log('📊 Estado actual del objeto estadoMaterias:', estadoMaterias);
-    console.log('📋 Estado específico de', codigo, ':', estadoMaterias[codigo]);
-    
     const estadoActual = estadoMaterias[codigo];
     const materia = encontrarMateriaPorCodigo(codigo);
     
-    if (!materia) {
-        console.log('❌ No se encontró la materia:', codigo);
-        return;
-    }
-    
-    console.log('📋 Estado actual confirmado:', estadoActual);
+    if (!materia) return;
     
     let nuevoEstado;
     
@@ -278,11 +191,10 @@ function cambiarEstadoMateria(codigo) {
     console.log(`Cambio: ${codigo} de ${estadoAnterior} a ${nuevoEstado}`);
     
     // NUEVA FUNCIONALIDAD: Desbloqueo automático
-    // Si una materia pasa a estado APROBADA o PROMOCIONADA, desbloquear materias dependientes
-    // NOTA: NO desbloquear con REGULAR - solo con APROBADA/PROMOCIONADA
-    if ((nuevoEstado === ESTADOS.APROBADA || nuevoEstado === ESTADOS.PROMOCIONADA) && 
-        (estadoAnterior !== ESTADOS.APROBADA && estadoAnterior !== ESTADOS.PROMOCIONADA)) {
-        console.log(`Intentando desbloquear dependientes de ${codigo} (pasó a ${nuevoEstado})`);
+    // Si una materia pasa a estado APROBADA, PROMOCIONADA o REGULAR, desbloquear materias dependientes
+    if ((nuevoEstado === ESTADOS.APROBADA || nuevoEstado === ESTADOS.PROMOCIONADA || nuevoEstado === ESTADOS.REGULAR) && 
+        (estadoAnterior !== ESTADOS.APROBADA && estadoAnterior !== ESTADOS.PROMOCIONADA && estadoAnterior !== ESTADOS.REGULAR)) {
+        console.log(`Intentando desbloquear dependientes de ${codigo}`);
         desbloquearMateriasDependientes(codigo);
     }
     
@@ -292,64 +204,15 @@ function cambiarEstadoMateria(codigo) {
         verificarBloqueosPorRegresion(codigo);
     }
     
-    console.log(`🎯 ESTADO FINAL: ${codigo} = ${estadoMaterias[codigo]}`);
     actualizarEstados();
     
-    // TEMPORALMENTE DESACTIVADO: Sincronización automática con Firebase 
-    // Vamos a debuggear sin interferencia de Firebase
-    /*
+    // Sincronizar con Firebase si está habilitado
+    console.log('🔄 Verificando sincronización:', { isSyncEnabled, firebaseUser: !!firebaseUser });
     if (isSyncEnabled && firebaseUser) {
-        console.log('☁️ Sincronizando con Firebase...');
+        console.log('☁️ Sincronizando cambio con Firebase...');
         syncToFirebase();
     } else {
-        console.log('📴 Firebase no habilitado o sin usuario');
-    }
-    */
-    console.log('📴 Sincronización Firebase temporalmente desactivada para debugging');
-    console.log('✅ cambiarEstadoMateria completado para:', codigo);
-}
-
-function mostrarMensajeMateriaBloqueda(materia) {
-    // Encontrar qué correlativas faltan para cursar
-    const correlativasFaltantes = [];
-    
-    // Verificar correlativas fuertes
-    for (let correlativa of materia.correlativasFuertes) {
-        const codigoCorrelativa = String(correlativa);
-        const estadoCorrelativa = estadoMaterias[codigoCorrelativa];
-        if (estadoCorrelativa !== ESTADOS.APROBADA && estadoCorrelativa !== ESTADOS.PROMOCIONADA) {
-            const materiaCorrelativa = encontrarMateriaPorCodigo(codigoCorrelativa);
-            correlativasFaltantes.push(`${codigoCorrelativa} ${materiaCorrelativa ? materiaCorrelativa.nombre : ''} (debe estar APROBADA para cursar)`);
-        }
-    }
-    
-    // Verificar correlativas débiles
-    for (let correlativa of materia.correlativasDebiles) {
-        const codigoCorrelativa = String(correlativa);
-        const estadoCorrelativa = estadoMaterias[codigoCorrelativa];
-        if (estadoCorrelativa !== ESTADOS.REGULAR && estadoCorrelativa !== ESTADOS.APROBADA && estadoCorrelativa !== ESTADOS.PROMOCIONADA) {
-            const materiaCorrelativa = encontrarMateriaPorCodigo(codigoCorrelativa);
-            correlativasFaltantes.push(`${codigoCorrelativa} ${materiaCorrelativa ? materiaCorrelativa.nombre : ''} (debe estar REGULAR o APROBADA para cursar)`);
-        }
-    }
-    
-    if (correlativasFaltantes.length > 0) {
-        const notification = document.createElement('div');
-        notification.className = 'bloqueo-notification';
-        notification.innerHTML = `
-            <strong>🔒 No puedes cursar ${materia.nombre}</strong><br>
-            <small>Faltan correlativas:</small><br>
-            ${correlativasFaltantes.map(c => `• ${c}`).join('<br>')}
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remover la notificación después de 4 segundos
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 4000);
+        console.log('❌ No se puede sincronizar:', { isSyncEnabled, hasFirebaseUser: !!firebaseUser });
     }
 }
 
@@ -497,21 +360,15 @@ function mostrarNotificacionBloqueo(materias) {
 }
 
 function actualizarEstados() {
-    console.log('=== 🎨 actualizarEstados llamado ===');
-    console.log('🔍 Verificando estados antes de actualizar UI...');
-    
+    console.log('=== actualizarEstados llamado ===');
     // Primero verificar qué materias están bloqueadas
     verificarMateriasBloquedas();
-    
-    console.log('🎯 Actualizando visualización de materias...');
-    let materiasActualizadas = 0;
     
     // Actualizar la visualización de todas las materias
     for (let codigo in estadoMaterias) {
         const elemento = document.querySelector(`[data-codigo="${codigo}"]`);
         if (elemento) {
             const estado = estadoMaterias[codigo];
-            console.log(`  📌 Actualizando ${codigo}: ${estado}`);
             
             // Remover todas las clases de estado
             Object.values(ESTADOS).forEach(clase => {
@@ -525,15 +382,12 @@ function actualizarEstados() {
             const statusElement = elemento.querySelector('.subject-status');
             statusElement.textContent = getStatusText(estado);
             statusElement.className = `subject-status ${estado}`;
-            
-            materiasActualizadas++;
-        } else {
-            console.log(`❌ No se encontró elemento para materia ${codigo}`);
         }
     }
-    
-    console.log(`✅ ${materiasActualizadas} materias actualizadas en la UI`);
-    console.log('=== 🎨 actualizarEstados completado ===');
+    console.log('=== Estado final de las materias ===');
+    console.log('Materia 7:', estadoMaterias['7']);
+    console.log('Materia 16:', estadoMaterias['16']);
+    console.log('Materia 19:', estadoMaterias['19']);
 }
 
 function verificarMateriasBloquedas() {
@@ -565,12 +419,6 @@ function verificarSiPuedesCursar(materia) {
     // - Correlativas DÉBILES (D): REGULARES, APROBADAS o PROMOCIONADAS
     
     console.log(`Verificando si puede cursar: ${materia.codigo} ${materia.nombre}`);
-    
-    // Si no tiene correlativas, puede cursarse siempre
-    if (materia.correlativasFuertes.length === 0 && materia.correlativasDebiles.length === 0) {
-        console.log(`  Sin correlativas - SÍ puede cursar ${materia.codigo}`);
-        return true;
-    }
     
     // Verificar correlativas fuertes (F) - deben estar APROBADAS o PROMOCIONADAS
     for (let correlativa of materia.correlativasFuertes) {
@@ -647,30 +495,22 @@ function getStatusText(estado) {
 
 // Funciones de control
 function resetAll() {
-    if (confirm('¿Estás seguro de que quieres reiniciar todo el progreso (incluyendo notas)?')) {
+    if (confirm('¿Estás seguro de que quieres reiniciar todo el progreso?')) {
         inicializarMaterias();
-        renderizarMaterias(); // Re-renderizar para limpiar notas
         actualizarEstados();
     }
 }
 
 function saveProgress() {
-    const progreso = {
-        estados: estadoMaterias,
-        notas: notasMaterias
-    };
-    localStorage.setItem('mallaInteractivaUCSE', JSON.stringify(progreso));
+    localStorage.setItem('mallaInteractivaUCSE', JSON.stringify(estadoMaterias));
     alert('Progreso guardado exitosamente!');
 }
 
 function loadProgress() {
     const progreso = localStorage.getItem('mallaInteractivaUCSE');
     if (progreso) {
-        const data = JSON.parse(progreso);
-        if (data.estados) estadoMaterias = data.estados;
-        if (data.notas) notasMaterias = data.notas;
+        estadoMaterias = JSON.parse(progreso);
         actualizarEstados();
-        renderizarMaterias(); // Re-renderizar para mostrar notas cargadas
         alert('Progreso cargado exitosamente!');
     } else {
         alert('No hay progreso guardado anteriormente.');
@@ -729,15 +569,7 @@ function toggleSync() {
 }
 
 function closeLoginModal() {
-    console.log('🚪 Intentando cerrar modal de login, firebaseUser:', !!firebaseUser);
-    // Solo cerrar el modal si hay un usuario autenticado
-    if (firebaseUser) {
-        document.getElementById('loginModal').style.display = 'none';
-        console.log('✅ Modal cerrado exitosamente');
-    } else {
-        console.log('❌ No se puede cerrar modal sin usuario autenticado');
-    }
-    // Si no hay usuario autenticado, no hacer nada (no cerrar el modal)
+    document.getElementById('loginModal').style.display = 'none';
 }
 
 function loginUser() {
@@ -849,65 +681,63 @@ function updateUI(user) {
 function setupRealtimeSync() {
     if (!firebaseUser) return;
     
-    console.log('🚫 DEBUGGING: Sincronización en tiempo real temporalmente DESACTIVADA');
-    console.log('🔧 Esto evita que Firebase sobrescriba los cambios locales');
-    
-    // TEMPORALMENTE COMENTADO para debugging
-    /*
-    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}`);
+    console.log('🔄 Configurando sincronización en tiempo real...');
+    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}/materias`);
     
     // Escuchar cambios en tiempo real
     window.firebaseOnValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data && !isInitialLoad) {
-            // Datos recibidos de la nube (sincronización en tiempo real)
-            console.log('📥 Sincronizando datos desde Firebase...');
-            if (data.materias) estadoMaterias = data.materias;
-            if (data.notas) notasMaterias = data.notas;
-            actualizarEstados();
-            renderizarMaterias(); // Re-renderizar para actualizar notas
-            showSyncNotification('📥 Progreso sincronizado desde la nube');
+            // IMPORTANTE: Solo sincronizar desde la nube si no hay cambios locales recientes
+            console.log('📥 Datos recibidos desde Firebase - verificando si aplicar...');
+            console.log('Estado local actual vs datos remotos:', { local: Object.keys(estadoMaterias).length, remoto: Object.keys(data).length });
+            
+            // Solo aplicar cambios remotos si son significativamente diferentes
+            const cambiosSignificativos = Object.keys(data).some(codigo => 
+                estadoMaterias[codigo] !== data[codigo]
+            );
+            
+            if (cambiosSignificativos) {
+                console.log('📥 Aplicando sincronización desde la nube...');
+                estadoMaterias = data;
+                actualizarEstados();
+                showSyncNotification('📥 Progreso sincronizado desde la nube');
+            } else {
+                console.log('📋 Sin cambios significativos - manteniendo estado local');
+            }
         } else if (data && isInitialLoad) {
             // Primera carga - usar datos de la nube si existen
-            console.log('🔄 Cargando progreso guardado desde Firebase...');
-            if (data.materias) {
-                estadoMaterias = data.materias;
-                console.log('✅ Estados de materias cargados desde la nube');
-            }
-            if (data.notas) {
-                notasMaterias = data.notas;
-                console.log('✅ Notas cargadas desde la nube');
-            }
+            console.log('🔄 Carga inicial desde Firebase...');
+            estadoMaterias = data;
             actualizarEstados();
-            renderizarMaterias(); // Re-renderizar para mostrar notas
             updateSyncStatus('✅ Conectado y sincronizado', 'connected');
         } else if (isInitialLoad) {
-            // Primera vez - mantener datos locales iniciales y subirlos
-            console.log('📤 Primera vez: subiendo estado inicial a Firebase...');
+            // Primera vez - subir datos locales
+            console.log('📤 Primera vez - subiendo estado inicial...');
             syncToFirebase();
         }
         isInitialLoad = false;
     });
-    */
 }
 
 function syncToFirebase() {
-    if (!firebaseUser || !isSyncEnabled) return;
+    console.log('📤 syncToFirebase llamada:', { firebaseUser: !!firebaseUser, isSyncEnabled });
+    if (!firebaseUser || !isSyncEnabled) {
+        console.log('❌ Sync cancelado - requisitos no cumplidos');
+        return;
+    }
     
-    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}`);
+    console.log('📡 Enviando datos a Firebase...');
+    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}/materias`);
     
-    const userData = {
-        materias: estadoMaterias,
-        notas: notasMaterias
-    };
-    
-    window.firebaseSet(userRef, userData)
+    window.firebaseSet(userRef, estadoMaterias)
         .then(() => {
+            console.log('✅ Datos enviados exitosamente a Firebase');
             updateSyncStatus('✅ Conectado y sincronizado', 'connected');
             showSyncNotification('☁️ Progreso guardado en la nube');
         })
         .catch((error) => {
-            console.error('Error al sincronizar:', error);
+            console.error('❌ Error al sincronizar con Firebase:', error);
             updateSyncStatus('Error de sincronización', 'disconnected');
         });
 }
