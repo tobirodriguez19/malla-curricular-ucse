@@ -82,16 +82,12 @@ let isInitialLoad = true;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Iniciando aplicación...');
     
+    // Inicializar con estados por defecto
     inicializarMaterias();
     renderizarMaterias();
     actualizarEstados();
     
-    console.log('📚 Materias renderizadas, eventos click asignados');
-    
-    // Debug: agregar listener global para detectar todos los clicks
-    document.addEventListener('click', function(event) {
-        console.log('🌐 Click global detectado en:', event.target.tagName, event.target.className);
-    });
+    console.log('📚 Materias renderizadas con estados iniciales correctos');
     
     // Mostrar modal de login inmediatamente
     showLoginModal();
@@ -126,6 +122,7 @@ function showLoginModal() {
 }
 
 function inicializarMaterias() {
+    console.log('🏁 Inicializando estados de materias...');
     // Inicializar todas las materias como no cursadas
     for (let año in materias) {
         materias[año].forEach(materia => {
@@ -133,6 +130,10 @@ function inicializarMaterias() {
             notasMaterias[materia.codigo] = ''; // Inicializar notas vacías
         });
     }
+    
+    // Verificar cuáles materias pueden cursarse desde el inicio
+    verificarMateriasBloquedas();
+    console.log('✅ Estados iniciales configurados');
 }
 
 function renderizarMaterias() {
@@ -188,28 +189,21 @@ function crearElementoMateria(materia) {
     `;
     
     div.addEventListener('click', (event) => {
-        console.log('🖱️ Click detectado en div de materia:', materia.codigo, 'target:', event.target.className);
         // Solo cambiar estado si no se hizo click en el input de nota
         if (!event.target.classList.contains('nota-input')) {
             const estadoActual = estadoMaterias[materia.codigo];
-            console.log('📋 Estado actual de materia', materia.codigo, ':', estadoActual);
             
             // Si está bloqueada, mostrar mensaje y no hacer nada
             if (estadoActual === ESTADOS.BLOQUEADA) {
-                console.log('🚫 Materia bloqueada, no se puede cambiar estado');
+                console.log(`🚫 Materia ${materia.codigo} bloqueada`);
                 mostrarMensajeMateriaBloqueda(materia);
                 return;
             }
             
-            console.log('✅ Click válido en materia:', materia.codigo);
+            console.log(`✅ Cambiando estado de materia ${materia.codigo}`);
             cambiarEstadoMateria(materia.codigo);
-        } else {
-            console.log('❌ Click en input de nota, ignorando');
         }
     });
-    
-    // Log adicional para verificar que el evento se agregó
-    console.log(`📍 Evento click agregado a materia ${materia.codigo}`);
     
     return div;
 }
@@ -550,6 +544,12 @@ function verificarSiPuedesCursar(materia) {
     
     console.log(`Verificando si puede cursar: ${materia.codigo} ${materia.nombre}`);
     
+    // Si no tiene correlativas, puede cursarse siempre
+    if (materia.correlativasFuertes.length === 0 && materia.correlativasDebiles.length === 0) {
+        console.log(`  Sin correlativas - SÍ puede cursar ${materia.codigo}`);
+        return true;
+    }
+    
     // Verificar correlativas fuertes (F) - deben estar APROBADAS o PROMOCIONADAS
     for (let correlativa of materia.correlativasFuertes) {
         // Convertir a string para comparación consistente
@@ -833,7 +833,8 @@ function setupRealtimeSync() {
     window.firebaseOnValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data && !isInitialLoad) {
-            // Datos recibidos de la nube
+            // Datos recibidos de la nube (sincronización en tiempo real)
+            console.log('📥 Sincronizando datos desde Firebase...');
             if (data.materias) estadoMaterias = data.materias;
             if (data.notas) notasMaterias = data.notas;
             actualizarEstados();
@@ -841,13 +842,21 @@ function setupRealtimeSync() {
             showSyncNotification('📥 Progreso sincronizado desde la nube');
         } else if (data && isInitialLoad) {
             // Primera carga - usar datos de la nube si existen
-            if (data.materias) estadoMaterias = data.materias;
-            if (data.notas) notasMaterias = data.notas;
+            console.log('🔄 Cargando progreso guardado desde Firebase...');
+            if (data.materias) {
+                estadoMaterias = data.materias;
+                console.log('✅ Estados de materias cargados desde la nube');
+            }
+            if (data.notas) {
+                notasMaterias = data.notas;
+                console.log('✅ Notas cargadas desde la nube');
+            }
             actualizarEstados();
             renderizarMaterias(); // Re-renderizar para mostrar notas
             updateSyncStatus('✅ Conectado y sincronizado', 'connected');
         } else if (isInitialLoad) {
-            // Primera vez - subir datos locales
+            // Primera vez - mantener datos locales iniciales y subirlos
+            console.log('📤 Primera vez: subiendo estado inicial a Firebase...');
             syncToFirebase();
         }
         isInitialLoad = false;
