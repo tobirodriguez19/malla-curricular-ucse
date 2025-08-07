@@ -21,7 +21,9 @@ Una aplicación web interactiva para visualizar y gestionar el progreso académi
 
 ## 🌐 Acceso Web
 
-Accede desde cualquier dispositivo en: **[GitHub Pages URL se actualizará después del deploy]**
+Accede desde cualquier dispositivo en: **https://tobirodriguez19.github.io/malla-curricular-ucse**
+
+🔗 **Repositorio GitHub**: https://github.com/tobirodriguez19/malla-curricular-ucse
 
 ## 📋 Sistema de Correlatividades
 
@@ -48,43 +50,3 @@ Plan de estudios con 48 materias distribuidas en 5 años académicos.
 ---
 
 Desarrollado con ❤️ para estudiantes de Ingeniería en Informática UCSE
-
-## Estructura de archivos
-- `index.html`: Página principal
-- `script.js`: Lógica de la aplicación
-- `README.md`: Este archivo de documentación
-
-## Instalación
-1. Descarga todos los archivos
-2. Abre `index.html` en tu navegador web
-3. ¡Listo para usar!
-
-## Personalización
-- **Colores**: Modifica el CSS en `index.html` para cambiar la apariencia
-- **Materias**: Edita el objeto `materias` en `script.js`
-- **Funcionalidades**: Agrega nuevas características modificando el JavaScript
-
-## Subir a GitHub
-Para subir este proyecto a GitHub:
-
-1. Crea un nuevo repositorio en GitHub
-2. Sube los archivos: `index.html`, `script.js`, y `README.md`
-3. Activa GitHub Pages en la configuración del repositorio
-4. Tu malla estará disponible en: `https://tu-usuario.github.io/nombre-repositorio`
-
-## Tecnologías utilizadas
-- HTML5
-- CSS3 (Grid, Flexbox, Gradientes)
-- JavaScript (ES6+)
-- LocalStorage para persistencia
-
-## Funcionalidades adicionales sugeridas
-- Exportar progreso a PDF
-- Estadísticas de progreso
-- Calculadora de promedio
-- Integración con calendario académico
-- Notificaciones de correlativas disponibles
-
----
-
-**Nota**: Recuerda actualizar las materias y correlatividades según el PDF oficial de la UCSE para que la información sea precisa.
