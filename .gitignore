@@ -1,0 +1,26 @@
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Archivos temporales de Excel
+~$*.xlsx
+~$*.xls
+
+# Logs
+*.log
+
+# Carpetas de dependencias (si usas Node.js más adelante)
+node_modules/
+
+# Archivos de editor
+.vscode/
+*.swp
+*.swo
+
+# Archivos de backup
+*.bak
+*~
