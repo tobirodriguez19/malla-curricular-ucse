@@ -533,20 +533,24 @@ function agregarMateria(año, codigo, nombre, correlativasFuertes = [], correlat
 
 function initializeFirebase() {
     if (!window.firebaseAuth) {
-        console.error('Firebase no está disponible');
+        console.error('❌ Firebase no está disponible');
+        updateSyncStatus('Firebase no disponible', 'disconnected');
         return;
     }
     
+    console.log('🔥 Iniciando Firebase...');
     updateSyncStatus('Conectando...', 'syncing');
     
     // Escuchar cambios de autenticación
     window.onAuthStateChanged(window.firebaseAuth, (user) => {
         if (user) {
             firebaseUser = user;
-            console.log('🔥 Usuario autenticado:', user.uid);
+            console.log('✅ Usuario autenticado:', user.uid);
+            console.log('🔄 Configurando sincronización en tiempo real...');
             setupRealtimeSync();
         } else {
             firebaseUser = null;
+            console.log('❌ Usuario no autenticado');
             updateSyncStatus('Desconectado', 'disconnected');
         }
     });
@@ -555,18 +559,30 @@ function initializeFirebase() {
 function toggleSync() {
     const button = document.getElementById('syncButton');
     
+    if (!window.firebaseAuth) {
+        updateSyncStatus('Firebase no disponible', 'disconnected');
+        console.error('Firebase no está cargado');
+        return;
+    }
+    
     if (!isSyncEnabled) {
         // Activar sincronización
         updateSyncStatus('Conectando...', 'syncing');
+        console.log('🔄 Intentando conectar con Firebase...');
+        
         window.signInAnonymously(window.firebaseAuth)
-            .then(() => {
+            .then((result) => {
+                console.log('✅ Conexión exitosa:', result.user.uid);
                 isSyncEnabled = true;
                 button.textContent = '🔄 Desactivar Sincronización';
                 button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+                updateSyncStatus('✅ Conectado exitosamente', 'connected');
             })
             .catch((error) => {
-                console.error('Error al conectar:', error);
-                updateSyncStatus('Error de conexión', 'disconnected');
+                console.error('❌ Error completo:', error);
+                console.error('❌ Código de error:', error.code);
+                console.error('❌ Mensaje:', error.message);
+                updateSyncStatus(`Error: ${error.code}`, 'disconnected');
             });
     } else {
         // Desactivar sincronización
