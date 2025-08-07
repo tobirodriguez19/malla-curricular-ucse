@@ -169,7 +169,13 @@ function crearElementoMateria(materia) {
         </div>
     `;
     
-    div.addEventListener('click', () => cambiarEstadoMateria(materia.codigo));
+    div.addEventListener('click', (event) => {
+        // Solo cambiar estado si no se hizo click en el input de nota
+        if (!event.target.classList.contains('nota-input')) {
+            console.log('Click en materia:', materia.codigo);
+            cambiarEstadoMateria(materia.codigo);
+        }
+    });
     
     return div;
 }
@@ -185,10 +191,16 @@ function actualizarNota(codigo, nota) {
 }
 
 function cambiarEstadoMateria(codigo) {
+    console.log('🔄 cambiarEstadoMateria llamada para:', codigo);
     const estadoActual = estadoMaterias[codigo];
     const materia = encontrarMateriaPorCodigo(codigo);
     
-    if (!materia) return;
+    if (!materia) {
+        console.log('❌ No se encontró la materia:', codigo);
+        return;
+    }
+    
+    console.log('📋 Estado actual:', estadoActual);
     
     let nuevoEstado;
     
