@@ -220,6 +220,9 @@ function actualizarNota(codigo, nota) {
 
 function cambiarEstadoMateria(codigo) {
     console.log('🔄 cambiarEstadoMateria llamada para:', codigo);
+    console.log('📊 Estado actual del objeto estadoMaterias:', estadoMaterias);
+    console.log('📋 Estado específico de', codigo, ':', estadoMaterias[codigo]);
+    
     const estadoActual = estadoMaterias[codigo];
     const materia = encontrarMateriaPorCodigo(codigo);
     
@@ -228,7 +231,7 @@ function cambiarEstadoMateria(codigo) {
         return;
     }
     
-    console.log('📋 Estado actual:', estadoActual);
+    console.log('📋 Estado actual confirmado:', estadoActual);
     
     let nuevoEstado;
     
@@ -275,10 +278,11 @@ function cambiarEstadoMateria(codigo) {
     console.log(`Cambio: ${codigo} de ${estadoAnterior} a ${nuevoEstado}`);
     
     // NUEVA FUNCIONALIDAD: Desbloqueo automático
-    // Si una materia pasa a estado APROBADA, PROMOCIONADA o REGULAR, desbloquear materias dependientes
-    if ((nuevoEstado === ESTADOS.APROBADA || nuevoEstado === ESTADOS.PROMOCIONADA || nuevoEstado === ESTADOS.REGULAR) && 
-        (estadoAnterior !== ESTADOS.APROBADA && estadoAnterior !== ESTADOS.PROMOCIONADA && estadoAnterior !== ESTADOS.REGULAR)) {
-        console.log(`Intentando desbloquear dependientes de ${codigo}`);
+    // Si una materia pasa a estado APROBADA o PROMOCIONADA, desbloquear materias dependientes
+    // NOTA: NO desbloquear con REGULAR - solo con APROBADA/PROMOCIONADA
+    if ((nuevoEstado === ESTADOS.APROBADA || nuevoEstado === ESTADOS.PROMOCIONADA) && 
+        (estadoAnterior !== ESTADOS.APROBADA && estadoAnterior !== ESTADOS.PROMOCIONADA)) {
+        console.log(`Intentando desbloquear dependientes de ${codigo} (pasó a ${nuevoEstado})`);
         desbloquearMateriasDependientes(codigo);
     }
     
@@ -288,12 +292,21 @@ function cambiarEstadoMateria(codigo) {
         verificarBloqueosPorRegresion(codigo);
     }
     
+    console.log(`🎯 ESTADO FINAL: ${codigo} = ${estadoMaterias[codigo]}`);
     actualizarEstados();
     
-    // Sincronizar con Firebase si está habilitado
+    // TEMPORALMENTE DESACTIVADO: Sincronización automática con Firebase 
+    // Vamos a debuggear sin interferencia de Firebase
+    /*
     if (isSyncEnabled && firebaseUser) {
+        console.log('☁️ Sincronizando con Firebase...');
         syncToFirebase();
+    } else {
+        console.log('📴 Firebase no habilitado o sin usuario');
     }
+    */
+    console.log('📴 Sincronización Firebase temporalmente desactivada para debugging');
+    console.log('✅ cambiarEstadoMateria completado para:', codigo);
 }
 
 function mostrarMensajeMateriaBloqueda(materia) {
@@ -484,15 +497,21 @@ function mostrarNotificacionBloqueo(materias) {
 }
 
 function actualizarEstados() {
-    console.log('=== actualizarEstados llamado ===');
+    console.log('=== 🎨 actualizarEstados llamado ===');
+    console.log('🔍 Verificando estados antes de actualizar UI...');
+    
     // Primero verificar qué materias están bloqueadas
     verificarMateriasBloquedas();
+    
+    console.log('🎯 Actualizando visualización de materias...');
+    let materiasActualizadas = 0;
     
     // Actualizar la visualización de todas las materias
     for (let codigo in estadoMaterias) {
         const elemento = document.querySelector(`[data-codigo="${codigo}"]`);
         if (elemento) {
             const estado = estadoMaterias[codigo];
+            console.log(`  📌 Actualizando ${codigo}: ${estado}`);
             
             // Remover todas las clases de estado
             Object.values(ESTADOS).forEach(clase => {
@@ -506,12 +525,15 @@ function actualizarEstados() {
             const statusElement = elemento.querySelector('.subject-status');
             statusElement.textContent = getStatusText(estado);
             statusElement.className = `subject-status ${estado}`;
+            
+            materiasActualizadas++;
+        } else {
+            console.log(`❌ No se encontró elemento para materia ${codigo}`);
         }
     }
-    console.log('=== Estado final de las materias ===');
-    console.log('Materia 7:', estadoMaterias['7']);
-    console.log('Materia 16:', estadoMaterias['16']);
-    console.log('Materia 19:', estadoMaterias['19']);
+    
+    console.log(`✅ ${materiasActualizadas} materias actualizadas en la UI`);
+    console.log('=== 🎨 actualizarEstados completado ===');
 }
 
 function verificarMateriasBloquedas() {
@@ -827,6 +849,11 @@ function updateUI(user) {
 function setupRealtimeSync() {
     if (!firebaseUser) return;
     
+    console.log('🚫 DEBUGGING: Sincronización en tiempo real temporalmente DESACTIVADA');
+    console.log('🔧 Esto evita que Firebase sobrescriba los cambios locales');
+    
+    // TEMPORALMENTE COMENTADO para debugging
+    /*
     const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}`);
     
     // Escuchar cambios en tiempo real
@@ -861,6 +888,7 @@ function setupRealtimeSync() {
         }
         isInitialLoad = false;
     });
+    */
 }
 
 function syncToFirebase() {
