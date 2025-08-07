@@ -88,6 +88,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('📚 Materias renderizadas, eventos click asignados');
     
+    // Debug: agregar listener global para detectar todos los clicks
+    document.addEventListener('click', function(event) {
+        console.log('🌐 Click global detectado en:', event.target.tagName, event.target.className);
+    });
+    
     // Mostrar modal de login inmediatamente
     showLoginModal();
     
@@ -183,12 +188,18 @@ function crearElementoMateria(materia) {
     `;
     
     div.addEventListener('click', (event) => {
+        console.log('🖱️ Click detectado en div de materia:', materia.codigo, 'target:', event.target.className);
         // Solo cambiar estado si no se hizo click en el input de nota
         if (!event.target.classList.contains('nota-input')) {
-            console.log('Click en materia:', materia.codigo);
+            console.log('✅ Click válido en materia:', materia.codigo);
             cambiarEstadoMateria(materia.codigo);
+        } else {
+            console.log('❌ Click en input de nota, ignorando');
         }
     });
+    
+    // Log adicional para verificar que el evento se agregó
+    console.log(`📍 Evento click agregado a materia ${materia.codigo}`);
     
     return div;
 }
