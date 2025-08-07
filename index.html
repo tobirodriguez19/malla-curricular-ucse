@@ -254,6 +254,33 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
 
+        .sync-status {
+            margin-top: 10px;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .sync-status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .sync-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .sync-status.syncing {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
         @media (max-width: 1200px) {
             .years-container {
                 grid-template-columns: repeat(3, 1fr);
@@ -334,11 +361,49 @@
 
         <div class="controls">
             <button class="btn" onclick="resetAll()">Reiniciar Todo</button>
-            <button class="btn" onclick="saveProgress()">Guardar Progreso</button>
-            <button class="btn" onclick="loadProgress()">Cargar Progreso</button>
+            <button class="btn" onclick="saveProgress()">Guardar Local</button>
+            <button class="btn" onclick="loadProgress()">Cargar Local</button>
+            <button class="btn" id="syncButton" onclick="toggleSync()">🔄 Activar Sincronización</button>
+            <div id="syncStatus" class="sync-status"></div>
         </div>
     </div>
 
     <script src="script.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+        import { getDatabase, ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBX8vXvXvXvXvXvXvXvXvXvXvXvXvXvXvX",
+            authDomain: "malla-ucse-demo.firebaseapp.com",
+            databaseURL: "https://malla-ucse-demo-default-rtdb.firebaseio.com",
+            projectId: "malla-ucse-demo",
+            storageBucket: "malla-ucse-demo.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdefghijklmnopqrstuvwxyz"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const database = getDatabase(app);
+
+        // Hacer disponibles globalmente
+        window.firebaseAuth = auth;
+        window.firebaseDatabase = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseOnValue = onValue;
+        window.signInAnonymously = signInAnonymously;
+        window.onAuthStateChanged = onAuthStateChanged;
+
+        console.log('🔥 Firebase configurado correctamente');
+    </script>
 </body>
 </html>

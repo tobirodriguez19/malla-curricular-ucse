@@ -8,16 +8,24 @@ Una aplicación web interactiva para visualizar y gestionar el progreso académi
 - 🔗 **Sistema de correlatividades** con validación automática (F: Fuertes, D: Débiles)
 - 🎯 **Estados de materias**: No Cursada, Cursando, Regular, Aprobada, Promocionada, Bloqueada
 - 🔄 **Desbloqueo automático** de materias cuando se cumplen correlativas
-- 💾 **Persistencia local** del progreso (LocalStorage)
+- ☁️ **Sincronización en tiempo real** entre todos tus dispositivos (Firebase)
+- 💾 **Persistencia local** del progreso (LocalStorage + Firebase)
 - 📱 **Diseño responsivo** para móviles y tablets
 - 🎨 **Interfaz moderna** con gradientes y animaciones
+- 🔒 **Funciona offline** - sincroniza cuando hay conexión
 
 ## 🚀 Uso
 
 1. **Abre la aplicación** en tu navegador
-2. **Haz clic en las materias** para cambiar su estado
-3. **Las materias se desbloquean automáticamente** cuando cumples las correlativas
-4. **Guarda tu progreso** con el botón "Guardar Progreso"
+2. **Activa la sincronización** haciendo clic en "🔄 Activar Sincronización"
+3. **Haz clic en las materias** para cambiar su estado
+4. **Las materias se desbloquean automáticamente** cuando cumples las correlativas
+5. **Tu progreso se sincroniza automáticamente** entre todos tus dispositivos
+
+### 💡 Funcionalidades adicionales:
+- **Guardar Local**: Backup manual en tu dispositivo
+- **Cargar Local**: Restaurar desde backup local
+- **Sincronización**: Automática entre dispositivos en tiempo real
 
 ## 🌐 Acceso Web
 
@@ -36,7 +44,9 @@ Accede desde cualquier dispositivo en: **https://tobirodriguez19.github.io/malla
 - HTML5
 - CSS3 (Grid, Flexbox, Animaciones)
 - JavaScript Vanilla
-- LocalStorage para persistencia
+- Firebase Realtime Database (sincronización)
+- Firebase Authentication (modo anónimo)
+- LocalStorage para persistencia offline
 
 ## 📱 Uso en Móviles
 

@@ -72,11 +72,23 @@ const ESTADOS = {
 // Almacenar el estado actual de cada materia
 let estadoMaterias = {};
 
+// Variables para Firebase
+let firebaseUser = null;
+let isSyncEnabled = false;
+let isInitialLoad = true;
+
 // Inicializar la aplicación
 document.addEventListener('DOMContentLoaded', function() {
     inicializarMaterias();
     renderizarMaterias();
     actualizarEstados();
+    
+    // Inicializar Firebase cuando esté disponible
+    setTimeout(() => {
+        if (window.firebaseAuth) {
+            initializeFirebase();
+        }
+    }, 1000);
 });
 
 function inicializarMaterias() {
@@ -193,6 +205,11 @@ function cambiarEstadoMateria(codigo) {
     }
     
     actualizarEstados();
+    
+    // Sincronizar con Firebase si está habilitado
+    if (isSyncEnabled && firebaseUser) {
+        syncToFirebase();
+    }
 }
 
 function mostrarMensajeRestriccion(materia) {
@@ -510,4 +527,117 @@ function agregarMateria(año, codigo, nombre, correlativasFuertes = [], correlat
     });
     
     estadoMaterias[codigo] = ESTADOS.NO_CURSADA;
+}
+
+// ===== FUNCIONES DE FIREBASE =====
+
+function initializeFirebase() {
+    if (!window.firebaseAuth) {
+        console.error('Firebase no está disponible');
+        return;
+    }
+    
+    updateSyncStatus('Conectando...', 'syncing');
+    
+    // Escuchar cambios de autenticación
+    window.onAuthStateChanged(window.firebaseAuth, (user) => {
+        if (user) {
+            firebaseUser = user;
+            console.log('🔥 Usuario autenticado:', user.uid);
+            setupRealtimeSync();
+        } else {
+            firebaseUser = null;
+            updateSyncStatus('Desconectado', 'disconnected');
+        }
+    });
+}
+
+function toggleSync() {
+    const button = document.getElementById('syncButton');
+    
+    if (!isSyncEnabled) {
+        // Activar sincronización
+        updateSyncStatus('Conectando...', 'syncing');
+        window.signInAnonymously(window.firebaseAuth)
+            .then(() => {
+                isSyncEnabled = true;
+                button.textContent = '🔄 Desactivar Sincronización';
+                button.style.background = 'linear-gradient(135deg, #28a745, #20c997)';
+            })
+            .catch((error) => {
+                console.error('Error al conectar:', error);
+                updateSyncStatus('Error de conexión', 'disconnected');
+            });
+    } else {
+        // Desactivar sincronización
+        isSyncEnabled = false;
+        button.textContent = '🔄 Activar Sincronización';
+        button.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+        updateSyncStatus('Sincronización desactivada', 'disconnected');
+    }
+}
+
+function setupRealtimeSync() {
+    if (!firebaseUser) return;
+    
+    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}/materias`);
+    
+    // Escuchar cambios en tiempo real
+    window.firebaseOnValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data && !isInitialLoad) {
+            // Datos recibidos de la nube
+            estadoMaterias = data;
+            actualizarEstados();
+            showSyncNotification('📥 Progreso sincronizado desde la nube');
+        } else if (data && isInitialLoad) {
+            // Primera carga - usar datos de la nube si existen
+            estadoMaterias = data;
+            actualizarEstados();
+            updateSyncStatus('✅ Conectado y sincronizado', 'connected');
+        } else if (isInitialLoad) {
+            // Primera vez - subir datos locales
+            syncToFirebase();
+        }
+        isInitialLoad = false;
+    });
+}
+
+function syncToFirebase() {
+    if (!firebaseUser || !isSyncEnabled) return;
+    
+    const userRef = window.firebaseRef(window.firebaseDatabase, `users/${firebaseUser.uid}/materias`);
+    
+    window.firebaseSet(userRef, estadoMaterias)
+        .then(() => {
+            updateSyncStatus('✅ Conectado y sincronizado', 'connected');
+            showSyncNotification('☁️ Progreso guardado en la nube');
+        })
+        .catch((error) => {
+            console.error('Error al sincronizar:', error);
+            updateSyncStatus('Error de sincronización', 'disconnected');
+        });
+}
+
+function updateSyncStatus(message, type) {
+    const statusDiv = document.getElementById('syncStatus');
+    if (statusDiv) {
+        statusDiv.textContent = message;
+        statusDiv.className = `sync-status ${type}`;
+    }
+}
+
+function showSyncNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'desbloqueo-notification';
+    notification.innerHTML = `<strong>${message}</strong>`;
+    notification.style.background = '#17a2b8';
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
 }
