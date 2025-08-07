@@ -80,9 +80,13 @@ let isInitialLoad = true;
 
 // Inicializar la aplicación
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Iniciando aplicación...');
+    
     inicializarMaterias();
     renderizarMaterias();
     actualizarEstados();
+    
+    console.log('📚 Materias renderizadas, eventos click asignados');
     
     // Mostrar modal de login inmediatamente
     showLoginModal();
@@ -96,6 +100,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function showLoginModal() {
+    console.log('🔐 Mostrando modal de login');
+    
     // Mostrar el modal inmediatamente
     document.getElementById('loginModal').style.display = 'flex';
     
@@ -105,6 +111,7 @@ function showLoginModal() {
             window.onAuthStateChanged(window.firebaseAuth, (user) => {
                 if (user) {
                     // Usuario autenticado, cerrar modal
+                    console.log('✅ Usuario autenticado, cerrando modal');
                     document.getElementById('loginModal').style.display = 'none';
                     clearInterval(checkAuthInterval);
                 }
@@ -124,6 +131,9 @@ function inicializarMaterias() {
 }
 
 function renderizarMaterias() {
+    console.log('🎨 Renderizando materias...');
+    let totalMaterias = 0;
+    
     for (let año in materias) {
         const container = document.getElementById(`year-${año}`);
         container.innerHTML = '';
@@ -131,8 +141,11 @@ function renderizarMaterias() {
         materias[año].forEach(materia => {
             const materiaElement = crearElementoMateria(materia);
             container.appendChild(materiaElement);
+            totalMaterias++;
         });
     }
+    
+    console.log(`✅ ${totalMaterias} materias renderizadas con eventos click`);
 }
 
 function crearElementoMateria(materia) {
@@ -629,9 +642,13 @@ function toggleSync() {
 }
 
 function closeLoginModal() {
+    console.log('🚪 Intentando cerrar modal de login, firebaseUser:', !!firebaseUser);
     // Solo cerrar el modal si hay un usuario autenticado
     if (firebaseUser) {
         document.getElementById('loginModal').style.display = 'none';
+        console.log('✅ Modal cerrado exitosamente');
+    } else {
+        console.log('❌ No se puede cerrar modal sin usuario autenticado');
     }
     // Si no hay usuario autenticado, no hacer nada (no cerrar el modal)
 }
