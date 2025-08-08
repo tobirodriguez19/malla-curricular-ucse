@@ -134,6 +134,11 @@ function renderizarMaterias() {
             container.appendChild(materiaElement);
         });
     }
+    
+    // Actualizar colores de correlativas después del renderizado inicial
+    setTimeout(() => {
+        actualizarColoresCorrelativas();
+    }, 100);
 }
 
 function crearElementoMateria(materia) {
@@ -150,11 +155,11 @@ function crearElementoMateria(materia) {
         <div class="correlativas">
             ${materia.correlativasFuertes.length > 0 ? 
                 `<div><span class="correlativas-label">F:</span>${materia.correlativasFuertes.map(c => 
-                    `<span class="correlativas-fuertes">${c}</span>`
+                    `<span class="correlativas-fuertes" data-codigo="${c}">${c}</span>`
                 ).join('')}</div>` : ''}
             ${materia.correlativasDebiles.length > 0 ? 
                 `<div><span class="correlativas-label">D:</span>${materia.correlativasDebiles.map(c => 
-                    `<span class="correlativas-debiles">${c}</span>`
+                    `<span class="correlativas-debiles" data-codigo="${c}">${c}</span>`
                 ).join('')}</div>` : ''}
         </div>
     `;
@@ -172,8 +177,9 @@ function cambiarEstadoMateria(codigo) {
     
     let nuevoEstado;
     
-    // Si la materia está bloqueada, no puede cambiar de estado
+    // Si la materia está bloqueada, mostrar mensaje informativo y no cambiar estado
     if (estadoActual === ESTADOS.BLOQUEADA) {
+        mostrarMensajeBloqueada(materia);
         return;
     }
     
@@ -237,6 +243,76 @@ function cambiarEstadoMateria(codigo) {
         syncToFirebase();
     } else {
         console.log('❌ No se puede sincronizar:', { isSyncEnabled, hasFirebaseUser: !!firebaseUser });
+    }
+}
+
+function mostrarMensajeBloqueada(materia) {
+    // Encontrar qué correlativas faltan para poder cursar
+    const correlativasFaltantes = [];
+    
+    // Verificar correlativas fuertes - necesitan estar APROBADAS o PROMOCIONADAS
+    for (let correlativa of materia.correlativasFuertes) {
+        const codigoCorrelativa = String(correlativa);
+        const estadoCorrelativa = estadoMaterias[codigoCorrelativa];
+        if (estadoCorrelativa !== ESTADOS.APROBADA && estadoCorrelativa !== ESTADOS.PROMOCIONADA) {
+            const materiaCorrelativa = encontrarMateriaPorCodigo(codigoCorrelativa);
+            const estadoTexto = estadoCorrelativa === ESTADOS.NO_CURSADA ? 'no cursada' : 
+                              estadoCorrelativa === ESTADOS.CURSANDO ? 'cursando' : 
+                              estadoCorrelativa === ESTADOS.REGULAR ? 'regular' : 
+                              estadoCorrelativa === ESTADOS.BLOQUEADA ? 'bloqueada' : estadoCorrelativa;
+            correlativasFaltantes.push({
+                codigo: codigoCorrelativa,
+                nombre: materiaCorrelativa ? materiaCorrelativa.nombre : 'Materia no encontrada',
+                tipo: 'fuerte',
+                estadoActual: estadoTexto,
+                requiere: 'APROBADA o PROMOCIONADA'
+            });
+        }
+    }
+    
+    // Verificar correlativas débiles - necesitan estar REGULARES, APROBADAS o PROMOCIONADAS
+    for (let correlativa of materia.correlativasDebiles) {
+        const codigoCorrelativa = String(correlativa);
+        const estadoCorrelativa = estadoMaterias[codigoCorrelativa];
+        if (estadoCorrelativa !== ESTADOS.REGULAR && 
+            estadoCorrelativa !== ESTADOS.APROBADA && 
+            estadoCorrelativa !== ESTADOS.PROMOCIONADA) {
+            const materiaCorrelativa = encontrarMateriaPorCodigo(codigoCorrelativa);
+            const estadoTexto = estadoCorrelativa === ESTADOS.NO_CURSADA ? 'no cursada' : 
+                              estadoCorrelativa === ESTADOS.CURSANDO ? 'cursando' : 
+                              estadoCorrelativa === ESTADOS.BLOQUEADA ? 'bloqueada' : estadoCorrelativa;
+            correlativasFaltantes.push({
+                codigo: codigoCorrelativa,
+                nombre: materiaCorrelativa ? materiaCorrelativa.nombre : 'Materia no encontrada',
+                tipo: 'débil',
+                estadoActual: estadoTexto,
+                requiere: 'REGULAR, APROBADA o PROMOCIONADA'
+            });
+        }
+    }
+    
+    if (correlativasFaltantes.length > 0) {
+        const notification = document.createElement('div');
+        notification.className = 'bloqueo-notification';
+        notification.innerHTML = `
+            <strong>🔒 ${materia.nombre} está BLOQUEADA</strong><br>
+            <small>Necesitas completar estas correlativas:</small><br><br>
+            ${correlativasFaltantes.map(c => 
+                `• <strong>${c.codigo} - ${c.nombre}</strong><br>
+                   &nbsp;&nbsp;Estado actual: <em>${c.estadoActual}</em><br>
+                   &nbsp;&nbsp;Necesitas: <strong>${c.requiere}</strong><br>
+                   &nbsp;&nbsp;Tipo: ${c.tipo === 'fuerte' ? 'Correlativa Fuerte (F)' : 'Correlativa Débil (D)'}<br>`
+            ).join('<br>')}
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remover la notificación después de 8 segundos (más tiempo para leer)
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 8000);
     }
 }
 
@@ -408,10 +484,37 @@ function actualizarEstados() {
             statusElement.className = `subject-status ${estado}`;
         }
     }
+    
+    // Actualizar colores de correlativas
+    actualizarColoresCorrelativas();
+    
     console.log('=== Estado final de las materias ===');
     console.log('Materia 7:', estadoMaterias['7']);
     console.log('Materia 16:', estadoMaterias['16']);
     console.log('Materia 19:', estadoMaterias['19']);
+}
+
+function actualizarColoresCorrelativas() {
+    // Actualizar todos los elementos de correlativas según su estado
+    const correlativasElements = document.querySelectorAll('.correlativas-fuertes, .correlativas-debiles');
+    
+    correlativasElements.forEach(element => {
+        const codigoCorrelativa = element.dataset.codigo;
+        const estadoCorrelativa = estadoMaterias[codigoCorrelativa];
+        
+        // Limpiar clases de estado anteriores
+        element.classList.remove('aprobada', 'regular', 'no-cursada', 'cursando');
+        
+        // Aplicar la clase según el estado
+        if (estadoCorrelativa === ESTADOS.APROBADA || estadoCorrelativa === ESTADOS.PROMOCIONADA) {
+            element.classList.add('aprobada');
+        } else if (estadoCorrelativa === ESTADOS.REGULAR) {
+            element.classList.add('regular');
+        } else {
+            // Para NO_CURSADA, CURSANDO, o BLOQUEADA - usar estilo rojo
+            element.classList.add('no-cursada');
+        }
+    });
 }
 
 function verificarMateriasBloquedas() {

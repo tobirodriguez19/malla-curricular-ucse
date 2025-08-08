@@ -196,22 +196,49 @@
             color: #6c757d;
         }
 
-        .correlativas-fuertes {
-            background: #ffe6e6;
+        .correlativas-fuertes, .correlativas-debiles {
             padding: 2px 4px;
             border-radius: 3px;
             margin: 1px;
             display: inline-block;
-            border: 1px solid #dc3545;
+            border: 1px solid;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        /* Estados de correlativas - Aprobadas/Promocionadas */
+        .correlativas-fuertes.aprobada, .correlativas-debiles.aprobada {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        /* Estados de correlativas - Regulares */
+        .correlativas-fuertes.regular, .correlativas-debiles.regular {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        /* Estados de correlativas - No cursadas/Cursando (rojas) */
+        .correlativas-fuertes.no-cursada, .correlativas-debiles.no-cursada,
+        .correlativas-fuertes.cursando, .correlativas-debiles.cursando {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        /* Estilo por defecto para correlativas sin estado definido */
+        .correlativas-fuertes {
+            background: #ffe6e6;
+            border-color: #dc3545;
+            color: #721c24;
         }
 
         .correlativas-debiles {
             background: #fff2e6;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin: 1px;
-            display: inline-block;
-            border: 1px solid #ffc107;
+            border-color: #ffc107;
+            color: #856404;
         }
 
         .correlativas-label {
@@ -262,11 +289,14 @@
             right: 20px;
             background: #dc3545;
             color: white;
-            padding: 15px 20px;
+            padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             z-index: 1000;
             animation: slideIn 0.3s ease-out;
+            max-width: 400px;
+            font-size: 0.9em;
+            line-height: 1.4;
         }
 
         @keyframes slideIn {
