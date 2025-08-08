@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Malla Curricular Interactiva - Ingeniería en Informática UCSE</title>
+    <link rel="icon" type="image/x-icon" href="UCSE-foto.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="UCSE-foto.ico">
     <style>
         * {
             margin: 0;
@@ -32,6 +34,29 @@
             color: white;
             padding: 30px;
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .ucse-logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background: white;
+            padding: 5px;
+        }
+
+        .header-text {
+            text-align: left;
         }
 
         .header h1 {
@@ -83,7 +108,7 @@
         .cursando { background-color: #fff3cd; border-color: #ffc107; }
         .regular { background-color: #d1ecf1; border-color: #17a2b8; }
         .aprobada { background-color: #d4edda; border-color: #28a745; }
-        .promocionada { background-color: #e2e3ff; border-color: #6f42c1; }
+        .promocionada { background-color: #e2e3ff; border-color: #28a745; }
         .bloqueada { background-color: #f8d7da; border-color: #dc3545; }
 
         .years-container {
@@ -394,14 +419,33 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header-text {
+                text-align: center;
+            }
+
+            .ucse-logo {
+                width: 60px;
+                height: 60px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Malla Curricular Interactiva</h1>
-            <p>Ingeniería en Informática - UCSE</p>
+            <div class="header-content">
+                <img src="UCSE-foto.ico" alt="Logo UCSE" class="ucse-logo">
+                <div class="header-text">
+                    <h1>Malla Curricular Interactiva</h1>
+                    <p>Ingeniería en Informática - UCSE</p>
+                </div>
+            </div>
         </div>
 
         <div class="legend">
