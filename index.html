@@ -373,6 +373,117 @@
             z-index: 2000;
         }
 
+        .recomendaciones-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            overflow-y: auto;
+        }
+
+        .recomendaciones-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 20px;
+        }
+
+        .recomendaciones-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        .recomendaciones-header h3 {
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .close-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+
+        .prioridad-alta {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .prioridad-media {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .prioridad-baja {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .materia-recomendacion {
+            margin: 8px 0;
+        }
+
+        .materia-recomendacion h4 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .materias-dependientes {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .mesa-recomendacion {
+            background: #e7f3ff;
+            border: 1px solid #2196F3;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .sin-recomendaciones {
+            text-align: center;
+            padding: 30px;
+            color: #28a745;
+            font-size: 1.1em;
+        }
+
         .login-form {
             background: white;
             padding: 30px;
@@ -535,7 +646,8 @@
             <button class="btn" onclick="resetAll()">Reiniciar Todo</button>
             <button class="btn" onclick="saveProgress()">Guardar Local</button>
             <button class="btn" onclick="loadProgress()">Cargar Local</button>
-            <button class="btn" id="syncButton" onclick="toggleSync()">� Iniciar Sesión</button>
+            <button class="btn" onclick="mostrarRecomendaciones()">🎯 Recomendaciones de Mesa</button>
+            <button class="btn" id="syncButton" onclick="toggleSync()">🔐 Iniciar Sesión</button>
             <button class="btn" id="logoutButton" onclick="logout()" style="display: none;">🚪 Cerrar Sesión</button>
             <div id="userInfo" class="user-info" style="display: none;"></div>
             <div id="syncStatus" class="sync-status"></div>
@@ -553,6 +665,19 @@
             <input type="password" id="password" placeholder="Contraseña" required>
             <button type="button" class="btn-primary" onclick="loginUser()">Iniciar Sesión</button>
             <button type="button" class="btn-secondary" onclick="registerUser()">Crear Cuenta Nueva</button>
+        </div>
+    </div>
+
+    <!-- Modal de Recomendaciones -->
+    <div id="recomendacionesModal" class="recomendaciones-modal">
+        <div class="recomendaciones-content">
+            <div class="recomendaciones-header">
+                <h3>🎯 Recomendaciones de Mesa de Examen</h3>
+                <button class="close-btn" onclick="cerrarRecomendaciones()">×</button>
+            </div>
+            <div id="recomendacionesBody">
+                <!-- El contenido se generará dinámicamente -->
+            </div>
         </div>
     </div>
 

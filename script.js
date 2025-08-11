@@ -899,3 +899,245 @@ function showSyncNotification(message) {
         }
     }, 3000);
 }
+
+// ====== SISTEMA DE RECOMENDACIONES DE MESA ======
+
+function mostrarRecomendaciones() {
+    const recomendaciones = analizarRecomendaciones();
+    const modal = document.getElementById('recomendacionesModal');
+    const body = document.getElementById('recomendacionesBody');
+    
+    body.innerHTML = generarHTMLRecomendaciones(recomendaciones);
+    modal.style.display = 'flex';
+}
+
+function cerrarRecomendaciones() {
+    const modal = document.getElementById('recomendacionesModal');
+    modal.style.display = 'none';
+}
+
+function analizarRecomendaciones() {
+    console.log('🎯 Analizando recomendaciones...');
+    
+    // Definir las mesas disponibles
+    const mesas = [
+        { nombre: 'Mesa Septiembre', fechas: '08/09 al 13/09', duracion: 'corta', capacidad: 1 },
+        { nombre: 'Mesa Noviembre', fechas: '17/11 al 29/11', duracion: 'larga', capacidad: 2 },
+        { nombre: 'Mesa Diciembre', fechas: '08/12 al 20/12', duracion: 'larga', capacidad: 2 }
+    ];
+    
+    // Materias que quiero cursar el año que viene (4to año - 1er cuatrimestre)
+    const materias4toPrimerCuatri = ['31', '32', '33', '34', '35', '37'];
+    
+    // Materias que quiero cursar el año que viene (4to año - 2do cuatrimestre)
+    const materias4toSegundoCuatri = ['36', '38', '39', '40'];
+    
+    // Encontrar materias regulares
+    const materiasRegulares = [];
+    for (let codigo in estadoMaterias) {
+        if (estadoMaterias[codigo] === ESTADOS.REGULAR) {
+            const materia = encontrarMateriaPorCodigo(codigo);
+            if (materia) {
+                materiasRegulares.push({
+                    codigo: codigo,
+                    nombre: materia.nombre,
+                    impacto: calcularImpacto(codigo, materias4toPrimerCuatri, materias4toSegundoCuatri)
+                });
+            }
+        }
+    }
+    
+    // Ordenar por impacto (prioridad)
+    materiasRegulares.sort((a, b) => b.impacto.puntos - a.impacto.puntos);
+    
+    return {
+        mesas,
+        materiasRegulares,
+        materias4toPrimerCuatri,
+        materias4toSegundoCuatri
+    };
+}
+
+function calcularImpacto(codigoMateria, materias4toPrimerCuatri, materias4toSegundoCuatri) {
+    let puntos = 0;
+    let materiasBloqueadas = [];
+    let detalles = [];
+    
+    // Verificar impacto en materias de 4to año - 1er cuatrimestre
+    for (let codigoObjetivo of materias4toPrimerCuatri) {
+        const materiaObjetivo = encontrarMateriaPorCodigo(codigoObjetivo);
+        if (materiaObjetivo) {
+            // Verificar si esta materia es correlativa fuerte o débil
+            const esFuerte = materiaObjetivo.correlativasFuertes.includes(codigoMateria);
+            const esDebil = materiaObjetivo.correlativasDebiles.includes(codigoMateria);
+            
+            if (esFuerte) {
+                puntos += 10; // Correlativa fuerte tiene más peso
+                materiasBloqueadas.push(materiaObjetivo.nombre);
+                detalles.push(`${materiaObjetivo.nombre} (Correlativa FUERTE)`);
+            } else if (esDebil) {
+                puntos += 5; // Correlativa débil tiene menos peso
+                materiasBloqueadas.push(materiaObjetivo.nombre);
+                detalles.push(`${materiaObjetivo.nombre} (Correlativa DÉBIL)`);
+            }
+        }
+    }
+    
+    // Verificar impacto en materias de 4to año - 2do cuatrimestre (menor prioridad)
+    for (let codigoObjetivo of materias4toSegundoCuatri) {
+        const materiaObjetivo = encontrarMateriaPorCodigo(codigoObjetivo);
+        if (materiaObjetivo) {
+            const esFuerte = materiaObjetivo.correlativasFuertes.includes(codigoMateria);
+            const esDebil = materiaObjetivo.correlativasDebiles.includes(codigoMateria);
+            
+            if (esFuerte) {
+                puntos += 5; // Menos prioridad porque es 2do cuatrimestre
+                materiasBloqueadas.push(materiaObjetivo.nombre);
+                detalles.push(`${materiaObjetivo.nombre} (Correlativa FUERTE - 2do cuatri)`);
+            } else if (esDebil) {
+                puntos += 2;
+                materiasBloqueadas.push(materiaObjetivo.nombre);
+                detalles.push(`${materiaObjetivo.nombre} (Correlativa DÉBIL - 2do cuatri)`);
+            }
+        }
+    }
+    
+    // Determinar prioridad
+    let prioridad = 'baja';
+    if (puntos >= 15) prioridad = 'alta';
+    else if (puntos >= 5) prioridad = 'media';
+    
+    return {
+        puntos,
+        prioridad,
+        materiasBloqueadas,
+        detalles
+    };
+}
+
+function generarHTMLRecomendaciones(data) {
+    if (data.materiasRegulares.length === 0) {
+        return `
+            <div class="sin-recomendaciones">
+                <h4>🎉 ¡Excelente!</h4>
+                <p>No tienes materias regulares pendientes para rendir.</p>
+                <p>Todas tus materias están aprobadas, promocionadas o aún no cursadas.</p>
+            </div>
+        `;
+    }
+    
+    let html = `
+        <div style="margin-bottom: 20px;">
+            <h4>📊 Análisis de Prioridades</h4>
+            <p>Basado en las materias que planeas cursar en 4to año (31, 32, 33, 34, 35, 37):</p>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <h4>📅 Mesas Disponibles</h4>
+    `;
+    
+    data.mesas.forEach(mesa => {
+        html += `
+            <div class="mesa-recomendacion">
+                📅 <strong>${mesa.nombre}</strong> (${mesa.fechas})
+                ${mesa.duracion === 'corta' ? '⚠️ Mesa corta - 1 materia máximo' : '✅ Mesa larga - Ideal para 2+ materias'}
+            </div>
+        `;
+    });
+    
+    html += `</div><h4>🎯 Recomendaciones por Prioridad</h4>`;
+    
+    // Agrupar por prioridad
+    const porPrioridad = {
+        alta: data.materiasRegulares.filter(m => m.impacto.prioridad === 'alta'),
+        media: data.materiasRegulares.filter(m => m.impacto.prioridad === 'media'),
+        baja: data.materiasRegulares.filter(m => m.impacto.prioridad === 'baja')
+    };
+    
+    // Mostrar prioridad alta
+    if (porPrioridad.alta.length > 0) {
+        html += `
+            <div class="prioridad-alta">
+                <h4>🔴 PRIORIDAD ALTA - Rendir URGENTE</h4>
+                <p><strong>Recomendación:</strong> Estas materias bloquean múltiples materias de 4to año</p>
+        `;
+        
+        porPrioridad.alta.forEach(materia => {
+            html += `
+                <div class="materia-recomendacion">
+                    <h4>${materia.codigo} - ${materia.nombre}</h4>
+                    <div class="materias-dependientes">
+                        <strong>Bloquea:</strong> ${materia.impacto.detalles.join(', ')}
+                    </div>
+                    <div style="margin-top: 8px; font-weight: bold; color: #dc3545;">
+                        💡 Recomendación: Mesa de Septiembre o Noviembre
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+    }
+    
+    // Mostrar prioridad media
+    if (porPrioridad.media.length > 0) {
+        html += `
+            <div class="prioridad-media">
+                <h4>🟡 PRIORIDAD MEDIA - Importante</h4>
+                <p><strong>Recomendación:</strong> Importante para algunas materias de 4to año</p>
+        `;
+        
+        porPrioridad.media.forEach(materia => {
+            html += `
+                <div class="materia-recomendacion">
+                    <h4>${materia.codigo} - ${materia.nombre}</h4>
+                    <div class="materias-dependientes">
+                        <strong>Bloquea:</strong> ${materia.impacto.detalles.join(', ')}
+                    </div>
+                    <div style="margin-top: 8px; font-weight: bold; color: #ffc107;">
+                        💡 Recomendación: Mesa de Noviembre o Diciembre
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+    }
+    
+    // Mostrar prioridad baja
+    if (porPrioridad.baja.length > 0) {
+        html += `
+            <div class="prioridad-baja">
+                <h4>🟢 PRIORIDAD BAJA - Sin urgencia</h4>
+                <p><strong>Recomendación:</strong> No afectan materias de 4to año inmediatamente</p>
+        `;
+        
+        porPrioridad.baja.forEach(materia => {
+            html += `
+                <div class="materia-recomendacion">
+                    <h4>${materia.codigo} - ${materia.nombre}</h4>
+                    <div style="margin-top: 8px; font-weight: bold; color: #28a745;">
+                        💡 Recomendación: Mesa de Diciembre o año siguiente
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `</div>`;
+    }
+    
+    // Estrategia recomendada
+    html += `
+        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196F3;">
+            <h4>💡 Estrategia Recomendada</h4>
+            <ol>
+                <li><strong>Mesa Septiembre:</strong> 1 materia de prioridad ALTA (mesa corta)</li>
+                <li><strong>Mesa Noviembre:</strong> 1-2 materias de prioridad ALTA/MEDIA (mesa larga)</li>
+                <li><strong>Mesa Diciembre:</strong> Materias restantes de prioridad MEDIA/BAJA</li>
+            </ol>
+            <p style="margin-top: 10px;"><strong>🎯 Objetivo:</strong> Aprobar correlativas críticas antes de 4to año</p>
+        </div>
+    `;
+    
+    return html;
+}
